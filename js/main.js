@@ -113,21 +113,33 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
   const firmwareFile = document.getElementById('firmwareInput').files[0];
   const zipFile = document.getElementById('zipInput').files[0];
 
-  if (!firmwareFile || !zipFile) return alert("Please select both firmware and zip files.");
+  if (!firmwareFile && !zipFile) return alert("Please select a firmware file or a zip file.");
 
-  // Rename .bin to update.bin
-  const updateBin = new File([await firmwareFile.arrayBuffer()], "update.bin");
+  // Create a new zip file for the tar
+  const tarZip = new JSZip();
 
-  // Extract zip
-  const zip = new JSZip();
-  const zipContent = await zip.loadAsync(zipFile);
-  const files = [];
+  // Conditionally add update.bin
+  if (firmwareFile) {
+    // Rename .bin to update.bin
+    const updateBin = new File([await firmwareFile.arrayBuffer()], "update.bin");
+    tarZip.file("update.bin", await updateBin.arrayBuffer());
+  }
 
-  for (const filename in zipContent.files) {
-    const file = zipContent.files[filename];
-    if (!file.dir) {
-      const content = await file.async("uint8array");
-      files.push({ name: filename, content });
+  // Conditionally extract and add zip contents
+  if (zipFile) {
+    const zip = new JSZip();
+    const zipContent = await zip.loadAsync(zipFile);
+    const files = [];
+
+    for (const filename in zipContent.files) {
+      const file = zipContent.files[filename];
+      if (!file.dir) {
+        const content = await file.async("uint8array");
+        files.push({ name: filename, content });
+      }
+    }
+    for (const f of files) {
+      tarZip.file(f.name, f.content);
     }
   }
 
@@ -140,15 +152,8 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
   const infoBlob = new Blob([JSON.stringify(info, null, 2)], { type: 'application/json' });
   const infoFile = new File([infoBlob], "info.json");
 
-  // Create a new zip file for the tar
-  const tarZip = new JSZip();
-  
   // Add files to the zip
-  tarZip.file("update.bin", await updateBin.arrayBuffer());
   tarZip.file("info.json", await infoFile.arrayBuffer());
-  for (const f of files) {
-    tarZip.file(f.name, f.content);
-  }
 
   // Generate the tar file
   const tarContent = await tarZip.generateAsync({
