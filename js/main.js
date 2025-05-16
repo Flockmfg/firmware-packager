@@ -117,12 +117,13 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
 
   // Create a new zip file for the tar
   const tarZip = new JSZip();
+  const updateFolder = tarZip.folder("update");
 
   // Conditionally add update.bin
   if (firmwareFile) {
     // Rename .bin to update.bin
     const updateBin = new File([await firmwareFile.arrayBuffer()], "update.bin");
-    tarZip.file("update.bin", await updateBin.arrayBuffer());
+    updateFolder.file("update.bin", await updateBin.arrayBuffer());
   }
 
   // Conditionally extract and add zip contents
@@ -139,7 +140,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       }
     }
     for (const f of files) {
-      tarZip.file(f.name, f.content);
+      updateFolder.file(f.name, f.content);
     }
   }
 
@@ -153,7 +154,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
   const infoFile = new File([infoBlob], "info.json");
 
   // Add files to the zip
-  tarZip.file("info.json", await infoFile.arrayBuffer());
+  updateFolder.file("info.json", await infoFile.arrayBuffer());
 
   // Generate the tar file
   const tarContent = await tarZip.generateAsync({
